@@ -1,3 +1,4 @@
+import csv
 import json
 import sys
 from pathlib import Path
@@ -45,32 +46,44 @@ def remove_task(index):
     else:
         print(f"Invalid task index: {index}")
 
-def demo():
-    if TASKS_FILE.exists():
-        TASKS_FILE.unlink()
-
-    add_task("test task 1")
-    add_task("test task 2")
-    add_task("test task 3")
-    list_tasks()
-
-    mark_done(0)
-    list_tasks()
-
-    remove_task(1)
-    list_tasks()
-
+def edit_task(index, new_text):
     tasks = load_tasks()
-    assert tasks[0]["done"] == True
-    assert tasks[0]["text"] == "test task 1"
-    assert tasks[1]["text"] == "test task 3"
-    assert len(tasks) == 2
-    TASKS_FILE.unlink()
-    print("Self-check passed.")
+    if 0 <= index < len(tasks):
+        old_text = tasks[index]["text"]
+        tasks[index]["text"] = new_text
+        save_tasks(tasks)
+        print(f"Updated: '{old_text}' -> '{new_text}'")
+    else:
+        print(f"Invalid task index: {index}")
+
+def duplicate_task(index):
+    tasks = load_tasks()
+    if 0 <= index < len(tasks):
+        original = tasks[index]
+        new_task = {"text": original["text"], "done": False}
+        tasks.insert(index + 1, new_task)
+        save_tasks(tasks)
+        print(f"Duplicated: '{original['text']}'")
+    else:
+        print(f"Invalid task index: {index}")
+
+def export_tasks():
+    tasks = load_tasks()
+    print(json.dumps(tasks, indent=2))
+
+def export_csv():
+    tasks = load_tasks()
+    output = csv.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Texto", "Status"])
+    for task in tasks:
+        status = "Concluído" if task["done"] else "Pendente"
+        writer.writerow([task["text"], status])
+    print(output.getvalue(), end="")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python todo.py [add|list|done|remove|test]")
+        print("Usage: python todo.py [add|list|done|remove|edit|duplicate|export|export-csv|test]")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -83,7 +96,16 @@ if __name__ == "__main__":
         mark_done(int(sys.argv[2]))
     elif cmd == "remove" and len(sys.argv) > 2:
         remove_task(int(sys.argv[2]))
+    elif cmd == "edit" and len(sys.argv) > 3:
+        edit_task(int(sys.argv[2]), " ".join(sys.argv[3:]))
+    elif cmd == "duplicate" and len(sys.argv) > 2:
+        duplicate_task(int(sys.argv[2]))
+    elif cmd == "export":
+        export_tasks()
+    elif cmd == "export-csv":
+        export_csv()
     elif cmd == "test":
+        from test_todo import demo
         demo()
     else:
         print("Unknown command or missing arguments.")
